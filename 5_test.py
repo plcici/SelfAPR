@@ -12,10 +12,10 @@ import csv
 import os, gc
 import sys, subprocess,fnmatch, shutil, csv,re, datetime
 
-
-
+#测试数据集为'./dataset/test.csv'，从test.csv中获取数据，定义相关的参数，得到预测结果preds和groundtruth target，将其与test.csv的3-6列一起写入'./raw_results.csv'中
+#
 def getBugName(bugid):
-    print(bugid)
+    print(bugid)                 
     bugid=str(bugid).replace(' ','')
     buginfo=''
     startNo=''
@@ -42,15 +42,8 @@ def getBugName(bugid):
     
     return buginfo,startNo,removeNo,filepath
 
-
-
-
-
-
-
         
 def test( model, tokenizer, device, loader,epoch):
-    
     return_sequences = 50
     model.eval()
     identicalset=[]
@@ -58,7 +51,7 @@ def test( model, tokenizer, device, loader,epoch):
     with torch.no_grad():
         for _,data in enumerate(loader, 0):
             if _>-1:
-                gc.collect()
+                gc.collect()  #触发垃圾回收器来清理所有当前未使用的对象
                 torch.cuda.empty_cache()
                 y = data['target_ids'].to(device, dtype = torch.long)
                 ids = data['source_ids'].to(device, dtype = torch.long)
@@ -94,10 +87,6 @@ def test( model, tokenizer, device, loader,epoch):
 
 
 
-            
-                
-
-
 def getGeneratorDataLoader(filepatch,tokenizer,batchsize):
     df = pd.read_csv(filepatch,encoding='latin-1',delimiter='\t')
     print(df.head(1))
@@ -116,13 +105,11 @@ def getGeneratorDataLoader(filepatch,tokenizer,batchsize):
     return target_loader
 
 
-
-
 def run_test(epoch):
       
     for i in range(0,10):
-        gen = T5ForConditionalGeneration.from_pretrained('./model_SelfAPR_ALL/SelfAPR'+str(i+1),output_hidden_states=True)       
-        gen_tokenizer = T5Tokenizer.from_pretrained('./model_SelfAPR_ALL/SelfAPR'+str(i+1),truncation=True)
+        gen = T5ForConditionalGeneration.from_pretrained('/home/sunwanqi/caowy/APR/SelfAPR/model_SelfAPR/SelfAPR'+str(i+1),output_hidden_states=True)       
+        gen_tokenizer = T5Tokenizer.from_pretrained('/home/sunwanqi/caowy/APR/SelfAPR/model_SelfAPR/SelfAPR'+str(i+1),truncation=True)
         gen_tokenizer.add_tokens(['[PATCH]','[BUG]','{', '}','<','^','<=','>=','==','!=','<<','>>','[CE]','[FE]','[CONTEXT]','[BUGGY]','[CLASS]','[METHOD]','[RETURN_TYPE]','[VARIABLES]','[Delete]'])   
         gen = gen.to(device)       
         test_loader=getGeneratorDataLoader(TEST_PATH,gen_tokenizer,1)
@@ -136,7 +123,11 @@ if __name__ == '__main__':
     VALID_BATCH_SIZE = 1
     MAX_LEN = 384
     PATCH_LEN = 76 
-    device = 'cuda' if cuda.is_available() else 'cpu'
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2"
+    device_id = [0, 1, 2]   
+    for i in range(torch.cuda.device_count()):
+        print(torch.cuda.get_device_name(i), i)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     TEST_PATH='./dataset/test.csv'
         
